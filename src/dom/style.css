@@ -1,0 +1,42 @@
+.manifold_roomlisttabcontainer {
+  display: flex;
+  position: absolute;
+  bottom: calc(100% - 10px);
+
+  font-family: 'futurept_b1';
+}
+
+.manifold_roomlisttab {
+  padding: 5px 20px 12px;
+  border-radius: 5px;
+  margin-left: 5px;
+  pointer-events: none;
+  width: initial;
+  height: initial;
+  position: initial;
+  text-align: initial;
+  line-height: initial;
+  font-size: initial;
+  font-family: inherit;
+}
+
+.manifold_roomlisttab.inactive {
+  filter: brightness(0.7);
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.manifold_roomlistbuttoncontainer {
+  display: flex;
+  position: absolute;
+  left: 0;
+  bottom: -40px;
+  visibility: hidden;
+}
+
+.manifold_roomlistbutton {
+  width: 90px;
+  height: 30px;
+  margin-right: 10px;
+  line-height: 30px;
+}

@@ -1,0 +1,24 @@
+{
+  "name": "manifold-client",
+  "version": "1.0.0",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^5.2.7",
+    "file-loader": "^6.2.0",
+    "raw-loader": "^4.0.2",
+    "style-loader": "^3.1.0",
+    "ts-loader": "^9.5.1",
+    "url-loader": "^4.1.1",
+    "web-ext": "^7.6.0",
+    "webextension-polyfill": "^0.9.0",
+    "webpack": "^5.40.0",
+    "webpack-cli": "^4.7.2"
+  },
+  "scripts": {
+    "test": "web-ext run -s ./dist",
+    "build": "webpack",
+    "build-extension": "web-ext build -s ./dist --overwrite-dest && node generateUserScript.js"
+  }
+}
