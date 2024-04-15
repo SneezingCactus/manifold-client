@@ -333,6 +333,7 @@ export function init() {
   moveUpButton.classList.add('brownButton', 'brownButton_classic', 'buttonShadow', 'manifold_roomlistbutton');
   moveDownButton.classList.add('brownButton', 'brownButton_classic', 'buttonShadow', 'manifold_roomlistbutton');
   dialogAddButton.classList.add('roomlistcreatebottombutton', 'brownButton', 'brownButton_classic', 'buttonShadow');
+  dialogAddButton.style.visibility = 'hidden';
 
   officialTab.innerText = 'Official';
   manifoldTab.innerText = 'Manifold';
