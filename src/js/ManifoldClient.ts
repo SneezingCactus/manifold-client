@@ -58,6 +58,22 @@ export function handleIOCtorArgs(args: any[]) {
 }
 
 export function handleIOOnArgs(args: any[]) {
+  const cbOLD = args[1];
+
+  // Bonk, for some reason, prints these server messages using
+  // innerHTML, meaning without previous sanitization, servers
+  // would be able to perform XSS attacks. Granted, this isn't a
+  // problem in Vanilla Bonk because the official servers are
+  // trustful, but it certainly is a problem for third party
+  // servers.
+
+  // "server error message" packet
+  if (args[0] == 16) {
+    args[1] = function (message: string) {
+      return cbOLD(encodeURIComponent(message));
+    };
+  }
+
   if (!active) return;
 
   // Vanilla Bonk sends map data in these packets in their raw form,
@@ -70,8 +86,6 @@ export function handleIOOnArgs(args: any[]) {
 
   // "inform in lobby" packet
   if (args[0] == 21) {
-    const cbOLD = args[1];
-
     args[1] = function (data: any) {
       data.map = mapEncoder.decodeFromDatabase(data.map);
 
