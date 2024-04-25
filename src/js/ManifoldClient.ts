@@ -1,26 +1,8 @@
-const vanillaRoomList = {
-  roomList: document.getElementById('roomlist') as HTMLElement,
-  roomListTable: document.getElementById('roomlisttable') as HTMLElement,
-  refreshButton: document.getElementById('roomlistrefreshbutton') as HTMLElement,
-  createButton: document.getElementById('roomlistcreatebutton') as HTMLElement,
-  createWindow: document.getElementById('roomlistcreatewindow') as HTMLElement,
-  createWindowLabel1: document.getElementById('roomlistcreatewindowlabel1') as HTMLElement,
-  createWindowLabel2: document.getElementById('roomlistcreatewindowlabel2') as HTMLElement,
-  createWindowLabel3: document.getElementById('roomlistcreatewindowlabel3') as HTMLElement,
-  createWindowLabel4: document.getElementById('roomlistcreatewindowlabel4') as HTMLElement,
-  createWindowLabel5: document.getElementById('roomlistcreatewindowlabel5') as HTMLElement,
-  createWindowGameName: document.getElementById('roomlistcreatewindowgamename') as HTMLInputElement,
-  createWindowPassword: document.getElementById('roomlistcreatewindowpassword') as HTMLElement,
-  createWindowMaxPlayers: document.getElementById('roomlistcreatewindowmaxplayers') as HTMLElement,
-  createWindowMinLevel: document.getElementById('roomlistcreatewindowminlevel') as HTMLElement,
-  createWindowMaxLevel: document.getElementById('roomlistcreatewindowmaxlevel') as HTMLElement,
-  createWindowUnlisted: document.getElementById('roomlistcreatewindowunlisted') as HTMLElement,
-  createWindowContainer: document.getElementById('roomlistcreatewindowcontainer') as HTMLElement,
-  createWindowTopText: document.getElementById('roomlistcreatewindowtoptext') as HTMLElement,
-  createWindowCreateButton: document.getElementById('roomlistcreatecreatebutton') as HTMLElement,
-  createWindowCloseButton: document.getElementById('roomlist_create_close') as HTMLElement,
-};
+export const sanitizerElement = document.createElement('div');
 
+export let roomListElements: Record<string, HTMLElement>;
+
+export let statusChatMessage: (content: string, colour: string) => void;
 export let localPlayerData: any;
 export let mapEncoder: any;
 export let modeList: any;
@@ -48,6 +30,12 @@ export const fakePeerInstance = {
   },
 };
 
+export function handleIOInstance(instance: any) {
+  instance.on('mfold_chatstatus', (message: string, colour: string) => {
+    statusChatMessage(message, colour);
+  });
+}
+
 export function handleIOCtorArgs(args: any[]) {
   if (!active) return;
 
@@ -70,11 +58,29 @@ export function handleIOOnArgs(args: any[]) {
   // "server error message" packet
   if (args[0] == 16) {
     args[1] = function (message: string) {
-      return cbOLD(encodeURIComponent(message));
+      sanitizerElement.innerText = message;
+      return cbOLD(sanitizerElement.innerHTML);
     };
   }
 
   if (!active) return;
+
+  // When you gain XP, the client sends a packet requesting the server
+  // to add 100xp to your account, then the server replies with a packet
+  // containing your total amount of XP after the 100xp are added.
+  // Through this packet, the server can also reassign a client's token,
+  // which, even though useful in vanilla bonk servers, as tokens are
+  // temporary and must be renewed, it's unwanted in third party servers
+  // because players can be unwillingly and unknowingly logged into a
+  // different account.
+
+  // "gained xp" packet
+  if (args[0] == 46) {
+    args[1] = function (data: any) {
+      delete data.newToken;
+      return cbOLD(data);
+    };
+  }
 
   // Vanilla Bonk sends map data in these packets in their raw form,
   // as opposed to every other map-related packet, where map data is
@@ -151,6 +157,7 @@ export function fetchServerData(callback: (serverData: any) => void) {
       password: 0,
       players: 0,
       roomname: server,
+      closed: false,
       version: localPlayerData.version,
       metadataLoaded: false,
     });
@@ -209,13 +216,15 @@ export function fetchServerData(callback: (serverData: any) => void) {
 }
 
 export function updateRoomListEntry(serverIndex: number, data: any) {
-  const entry = vanillaRoomList.roomListTable.querySelector(`tr[data-myid='${serverIndex}']`) as HTMLTableRowElement;
+  const entry = roomListElements.roomListTable.querySelector(`tr[data-myid='${serverIndex}']`) as HTMLTableRowElement;
 
   if (!entry) return;
 
   serverEntries[serverIndex] = { ...serverEntries[serverIndex], ...data };
 
-  if (data.ping >= 0) {
+  if (data.closed) {
+    entry.cells[5].innerText = 'Closed';
+  } else if (data.ping >= 0) {
     entry.cells[0].innerText = data.roomname;
     entry.cells[1].innerText = `${data.players}/${data.maxplayers}`;
     entry.cells[2].innerText = modeList.modes[data.mode_mo]?.lobbyName ?? 'Unknown';
@@ -238,7 +247,7 @@ export function updateRoomListEntry(serverIndex: number, data: any) {
 export function afterRoomListLoad() {
   if (!active) return;
 
-  const entries = vanillaRoomList.roomListTable.getElementsByTagName('tr');
+  const entries = roomListElements.roomListTable.getElementsByTagName('tr');
 
   for (const entry of entries) {
     const data = serverEntries[parseInt(entry.getAttribute('data-myid') as string)];
@@ -328,6 +337,33 @@ export function init() {
     return postOLD(...arguments);
   };
 
+  roomListElements = {
+    roomList: document.getElementById('roomlist') as HTMLElement,
+    roomListTable: document.getElementById('roomlisttable') as HTMLElement,
+    refreshButton: document.getElementById('roomlistrefreshbutton') as HTMLElement,
+    createButton: document.getElementById('roomlistcreatebutton') as HTMLElement,
+    createWindow: document.getElementById('roomlistcreatewindow') as HTMLElement,
+    createWindowLabel1: document.getElementById('roomlistcreatewindowlabel1') as HTMLElement,
+    createWindowLabel2: document.getElementById('roomlistcreatewindowlabel2') as HTMLElement,
+    createWindowLabel3: document.getElementById('roomlistcreatewindowlabel3') as HTMLElement,
+    createWindowLabel4: document.getElementById('roomlistcreatewindowlabel4') as HTMLElement,
+    createWindowLabel5: document.getElementById('roomlistcreatewindowlabel5') as HTMLElement,
+    createWindowGameName: document.getElementById('roomlistcreatewindowgamename') as HTMLInputElement,
+    createWindowPassword: document.getElementById('roomlistcreatewindowpassword') as HTMLElement,
+    createWindowMaxPlayers: document.getElementById('roomlistcreatewindowmaxplayers') as HTMLElement,
+    createWindowMinLevel: document.getElementById('roomlistcreatewindowminlevel') as HTMLElement,
+    createWindowMaxLevel: document.getElementById('roomlistcreatewindowmaxlevel') as HTMLElement,
+    createWindowUnlisted: document.getElementById('roomlistcreatewindowunlisted') as HTMLElement,
+    createWindowContainer: document.getElementById('roomlistcreatewindowcontainer') as HTMLElement,
+    createWindowTopText: document.getElementById('roomlistcreatewindowtoptext') as HTMLElement,
+    createWindowCreateButton: document.getElementById('roomlistcreatecreatebutton') as HTMLElement,
+    createWindowCloseButton: document.getElementById('roomlist_create_close') as HTMLElement,
+    lobbyLinkButton: document.getElementById('newbonklobby_linkbutton') as HTMLElement,
+    hostLeaveGameEndRoomButton: document.getElementById('hostleaveconfirmwindow_endbutton') as HTMLElement,
+    mapVoteWindowFade: document.getElementById('newbonklobby_votewindow_fade') as HTMLElement,
+    mapVoteWindow: document.getElementById('newbonklobby_votewindow') as HTMLElement,
+  };
+
   const tabContainer = document.createElement('div');
   const officialTab = document.createElement('div');
   const manifoldTab = document.createElement('div');
@@ -364,10 +400,10 @@ export function init() {
   buttonContainer.appendChild(moveUpButton);
   buttonContainer.appendChild(moveDownButton);
 
-  vanillaRoomList.roomList.prepend(tabContainer);
-  vanillaRoomList.roomList.prepend(buttonContainer);
+  roomListElements.roomList.prepend(tabContainer);
+  roomListElements.roomList.prepend(buttonContainer);
 
-  vanillaRoomList.createWindow.appendChild(dialogAddButton);
+  roomListElements.createWindow.appendChild(dialogAddButton);
 
   localPlayerData.setButtonSounds([addButton, deleteButton, moveUpButton, moveDownButton, dialogAddButton]);
 
@@ -376,60 +412,70 @@ export function init() {
   // I didn't make a new window because of issues related to theming (w/ Bonk Themes or BLC)
   manifoldTab.addEventListener('click', function () {
     active = true;
-    vanillaRoomList.refreshButton.click();
+    roomListElements.refreshButton.click();
 
     officialTab.classList.add('inactive');
     manifoldTab.classList.remove('inactive');
     buttonContainer.style.visibility = 'visible';
-    vanillaRoomList.createButton.style.visibility = 'hidden';
-    vanillaRoomList.createWindowLabel2.style.visibility = 'hidden';
-    vanillaRoomList.createWindowLabel3.style.visibility = 'hidden';
-    vanillaRoomList.createWindowLabel4.style.visibility = 'hidden';
-    vanillaRoomList.createWindowLabel5.style.visibility = 'hidden';
-    vanillaRoomList.createWindowPassword.style.visibility = 'hidden';
-    vanillaRoomList.createWindowMaxPlayers.style.visibility = 'hidden';
-    vanillaRoomList.createWindowMinLevel.style.visibility = 'hidden';
-    vanillaRoomList.createWindowMaxLevel.style.visibility = 'hidden';
-    vanillaRoomList.createWindowUnlisted.style.visibility = 'hidden';
-    vanillaRoomList.createWindowContainer.style.height = '163px';
-    vanillaRoomList.createWindowTopText.innerText = 'Add Server';
-    vanillaRoomList.createWindowLabel1.innerText = 'Server URL';
-    vanillaRoomList.createWindowCreateButton.style.visibility = 'hidden';
+    roomListElements.createButton.style.visibility = 'hidden';
+    roomListElements.createWindowLabel2.style.visibility = 'hidden';
+    roomListElements.createWindowLabel3.style.visibility = 'hidden';
+    roomListElements.createWindowLabel4.style.visibility = 'hidden';
+    roomListElements.createWindowLabel5.style.visibility = 'hidden';
+    roomListElements.createWindowPassword.style.visibility = 'hidden';
+    roomListElements.createWindowMaxPlayers.style.visibility = 'hidden';
+    roomListElements.createWindowMinLevel.style.visibility = 'hidden';
+    roomListElements.createWindowMaxLevel.style.visibility = 'hidden';
+    roomListElements.createWindowUnlisted.style.visibility = 'hidden';
+    roomListElements.createWindowContainer.style.height = '163px';
+    roomListElements.createWindowTopText.innerText = 'Add Server';
+    roomListElements.createWindowLabel1.innerText = 'Server URL';
+    roomListElements.createWindowCreateButton.style.visibility = 'hidden';
     dialogAddButton.style.visibility = 'inherit';
+
+    roomListElements.lobbyLinkButton.classList.add('brownButtonDisabled');
+    roomListElements.hostLeaveGameEndRoomButton.classList.add('brownButtonDisabled');
+    roomListElements.mapVoteWindowFade.style.visibility = 'hidden';
+    roomListElements.mapVoteWindow.style.visibility = 'hidden';
   });
 
   officialTab.addEventListener('click', function () {
     active = false;
-    vanillaRoomList.refreshButton.click();
+    roomListElements.refreshButton.click();
 
     officialTab.classList.remove('inactive');
     manifoldTab.classList.add('inactive');
     buttonContainer.style.visibility = 'hidden';
-    vanillaRoomList.createButton.style.visibility = 'visible';
+    roomListElements.createButton.style.visibility = 'visible';
 
-    vanillaRoomList.createWindowLabel2.style.visibility = 'inherit';
-    vanillaRoomList.createWindowLabel3.style.visibility = 'inherit';
-    vanillaRoomList.createWindowLabel4.style.visibility = 'inherit';
-    vanillaRoomList.createWindowLabel5.style.visibility = 'inherit';
-    vanillaRoomList.createWindowPassword.style.visibility = 'inherit';
-    vanillaRoomList.createWindowMaxPlayers.style.visibility = 'inherit';
-    vanillaRoomList.createWindowMinLevel.style.visibility = 'inherit';
-    vanillaRoomList.createWindowMaxLevel.style.visibility = 'inherit';
-    vanillaRoomList.createWindowUnlisted.style.visibility = 'inherit';
-    vanillaRoomList.createWindowContainer.style.height = '363px';
-    vanillaRoomList.createWindowTopText.innerText = 'Create Game';
-    vanillaRoomList.createWindowLabel1.innerText = 'Game name';
-    vanillaRoomList.createWindowCreateButton.style.visibility = 'inherit';
+    roomListElements.createWindowLabel2.style.visibility = 'inherit';
+    roomListElements.createWindowLabel3.style.visibility = 'inherit';
+    roomListElements.createWindowLabel4.style.visibility = 'inherit';
+    roomListElements.createWindowLabel5.style.visibility = 'inherit';
+    roomListElements.createWindowPassword.style.visibility = 'inherit';
+    roomListElements.createWindowMaxPlayers.style.visibility = 'inherit';
+    roomListElements.createWindowMinLevel.style.visibility = 'inherit';
+    roomListElements.createWindowMaxLevel.style.visibility = 'inherit';
+    roomListElements.createWindowUnlisted.style.visibility = 'inherit';
+    roomListElements.createWindowContainer.style.height = '363px';
+    roomListElements.createWindowTopText.innerText = 'Create Game';
+    roomListElements.createWindowLabel1.innerText = 'Game name';
+    roomListElements.createWindowCreateButton.style.visibility = 'inherit';
     dialogAddButton.style.visibility = 'hidden';
+
+    roomListElements.lobbyLinkButton.classList.remove('brownButtonDisabled');
+    roomListElements.hostLeaveGameEndRoomButton.classList.remove('brownButtonDisabled');
+    roomListElements.mapVoteWindowFade.style.visibility = 'inherit';
+    roomListElements.mapVoteWindow.style.visibility = 'inherit';
   });
 
   addButton.addEventListener('click', function () {
-    vanillaRoomList.createButton.click();
-    vanillaRoomList.createWindowGameName.value = '';
+    roomListElements.createButton.click();
+    (roomListElements.createWindowGameName as HTMLInputElement).value = '';
   });
 
   deleteButton.addEventListener('click', function () {
-    const selectedRow = vanillaRoomList.roomListTable.querySelector('.SELECTED');
+    const selectedRow = roomListElements.roomListTable.querySelector('.SELECTED');
     if (!selectedRow) return;
 
     const indexToDelete = parseInt(selectedRow.getAttribute('data-myid') as string);
@@ -438,7 +484,7 @@ export function init() {
     serverEntries.splice(indexToDelete, 1);
     selectedRow.remove();
 
-    const entries = vanillaRoomList.roomListTable.getElementsByTagName('tr');
+    const entries = roomListElements.roomListTable.getElementsByTagName('tr');
 
     for (const entry of entries) {
       const index = parseInt(entry.getAttribute('data-myid') as string);
@@ -449,7 +495,7 @@ export function init() {
   });
 
   moveUpButton.addEventListener('click', function () {
-    const selectedRow = vanillaRoomList.roomListTable.querySelector('.SELECTED');
+    const selectedRow = roomListElements.roomListTable.querySelector('.SELECTED');
     if (!selectedRow || !selectedRow.previousElementSibling) return;
 
     const serverUrlIndex = parseInt(selectedRow.getAttribute('data-myid') as string);
@@ -466,7 +512,7 @@ export function init() {
   });
 
   moveDownButton.addEventListener('click', function () {
-    const selectedRow = vanillaRoomList.roomListTable.querySelector('.SELECTED');
+    const selectedRow = roomListElements.roomListTable.querySelector('.SELECTED');
     if (!selectedRow || !selectedRow.nextElementSibling) return;
 
     const serverUrlIndex = parseInt(selectedRow.getAttribute('data-myid') as string);
@@ -483,9 +529,9 @@ export function init() {
   });
 
   dialogAddButton.addEventListener('click', function (e) {
-    serverUrls.push(vanillaRoomList.createWindowGameName.value);
-    vanillaRoomList.refreshButton.click();
-    vanillaRoomList.createWindowCloseButton.click();
+    serverUrls.push((roomListElements.createWindowGameName as HTMLInputElement).value);
+    roomListElements.refreshButton.click();
+    roomListElements.createWindowCloseButton.click();
 
     localStorage.setItem('manifoldClientServers', JSON.stringify(serverUrls));
   });

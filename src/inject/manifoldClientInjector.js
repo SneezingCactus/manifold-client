@@ -26,6 +26,7 @@ function injector(src) {
       '  arguments[0] = function() {',
       '    window.manifold.handleIOCtorArgs(arguments);',
       '    const instance = ioOLD.apply(this, arguments);',
+      '    window.manifold.handleIOInstance(instance);',
       '    instance.emitOLD_tps = instance.emit;',
       '    instance.emit = function() {',
       '      window.manifold.handleIOEmitArgs(arguments);',
@@ -61,6 +62,16 @@ function injector(src) {
       '  }',
       '})();$1',
     ].join(''),
+  );
+
+  src = src.replace(
+    /function ([^\(]{0,5})(\(([^,\)]{3}[,\)]){6}\{)(.{0,1000}\+.{0,100}>=.{0,1000}docu)/m,
+    [
+      'window.manifold.statusChatMessage = $1;function $1$2',
+      '  if (arguments[0].startsWith("*  has given host privileges")) return;',
+      '$4',
+    ].join(''),
+    '$4',
   );
 
   src = src.replace(/([}]+?([\)]+)?;?)(function .{5,8}\(\)\{retur|$)/, 'window.manifold.init();$1$3');
