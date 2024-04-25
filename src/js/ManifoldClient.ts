@@ -94,7 +94,6 @@ export function handleIOOnArgs(args: any[]) {
   if (args[0] == 21) {
     args[1] = function (data: any) {
       data.map = mapEncoder.decodeFromDatabase(data.map);
-
       return cbOLD(data);
     };
   }
