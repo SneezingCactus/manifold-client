@@ -192,6 +192,11 @@ export function fetchServerData(callback: (serverData: any) => void) {
         data.maxlevel = 999;
         data.version = localPlayerData.version;
 
+        // client-side limits for roomlist entry params that are visible to the user
+        data.roomname = data.roomname?.slice(0, 1000);
+        data.players = data.players?.toString().slice(0, 1000);
+        data.maxplayers = data.maxplayers?.toString().slice(0, 1000);
+
         updateRoomListEntry(index, data);
       })
       .catch((e) => {
@@ -221,14 +226,16 @@ export function updateRoomListEntry(serverIndex: number, data: any) {
 
   serverEntries[serverIndex] = { ...serverEntries[serverIndex], ...data };
 
+  const pingCell = entry.cells[entry.cells.length - 1];
+
   if (data.closed) {
-    entry.cells[5].innerText = 'Closed';
+    pingCell.innerText = 'Closed';
   } else if (data.ping >= 0) {
     entry.cells[0].innerText = data.roomname;
     entry.cells[1].innerText = `${data.players}/${data.maxplayers}`;
     entry.cells[2].innerText = modeList.modes[data.mode_mo]?.lobbyName ?? 'Unknown';
     entry.cells[4].innerText = '';
-    entry.cells[5].innerText = `${data.ping}ms`;
+    pingCell.innerText = `${data.ping}ms`;
 
     if (data.password) {
       const passwordIcon = document.createElement('img');
@@ -237,9 +244,9 @@ export function updateRoomListEntry(serverIndex: number, data: any) {
       entry.cells[3].appendChild(passwordIcon);
     }
   } else if (data.ping == -2) {
-    entry.cells[5].innerText = 'Unreachable';
+    pingCell.innerText = 'Unreachable';
   } else if (data.ping == -3) {
-    entry.cells[5].innerText = 'Invalid';
+    pingCell.innerText = 'Invalid';
   }
 }
 
@@ -286,11 +293,11 @@ export function afterRoomListLoad() {
       entry.cells[1].innerText = `${data.players}/${data.maxplayers}`;
       entry.cells[2].innerText = modeList.modes[data.mode_mo]?.lobbyName ?? 'Unknown';
       entry.cells[4].innerText = '';
-      entry.cells[5].innerText = `${data.ping}ms`;
+      pingCell.innerText = `${data.ping}ms`;
     } else if (data.ping == -2) {
-      entry.cells[5].innerText = 'Unreachable';
+      pingCell.innerText = 'Unreachable';
     } else if (data.ping == -3) {
-      entry.cells[5].innerText = 'Invalid';
+      pingCell.innerText = 'Invalid';
     }
   }
 }

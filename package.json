@@ -1,8 +1,7 @@
 {
   "name": "manifold-client",
-  "version": "1.1.0",
-  "dependencies": {
-  },
+  "version": "1.1.1",
+  "dependencies": {},
   "devDependencies": {
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^5.2.7",
